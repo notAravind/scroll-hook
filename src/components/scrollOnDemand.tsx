@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import ObservableElement from "./ObservableElement";
-// import MoviesData from "../data/movies.json";
+import MoviesData from "../data/movies.json";
 
 const colors: Array<string> = ["red", "blue", "green", "black", "yellow"];
 
@@ -8,14 +8,22 @@ const getRandomIdx = () => {
   return Math.floor(Math.random() * colors.length);
 };
 
+export type Movie = {
+  id: number;
+  movie: string;
+  rating: number;
+  image: string;
+  imdb_url: string;
+};
+
 const ScrollComponent = () => {
   const intersectionObserver = useRef<IntersectionObserver>();
-  const [currElements, setCurrElements] = useState<Array<string>>([]);
+  const [currElements, setCurrElements] = useState<Array<Movie>>([]);
 
   useEffect(() => {
-    const tempArr = [];
-    for (let i = 0; i < 9; i++) {
-      tempArr.push(colors[getRandomIdx()]);
+    const tempArr: Array<Movie> = [];
+    for (let i = 0; i < 8; i++) {
+      tempArr.push(MoviesData[i] as Movie);
     }
 
     let currScrollY = window.scrollY;
@@ -23,13 +31,11 @@ const ScrollComponent = () => {
     let skip = 0;
 
     const skipElement = new Set();
-    const elementHeightInPixel = (window.innerHeight / 100) * 20;
-    console.log(elementHeightInPixel);
+    const elementHeightInPixel = (window.innerHeight / 100) * 25;
     intersectionObserver.current = new IntersectionObserver(
       (entries: IntersectionObserverEntry[]) => {
         const goingUp = window.scrollY < currScrollY ? true : false;
 
-        console.log();
         if (skip < entries.length) {
           skip += entries.length;
           return;
@@ -39,61 +45,78 @@ const ScrollComponent = () => {
 
         for (const entry of entries) {
           if (!entry.isIntersecting) {
-            const id = Number.parseInt(entry.target.id);
+            const elementID = Number.parseInt(entry.target.id);
 
-            if (skipElement.has(id)) {
-              console.log(id);
-
-              skipElement.delete(id);
+            if (skipElement.has(elementID)) {
+              skipElement.delete(elementID);
               continue;
             }
             nonIntersectedEle.push(entry);
           }
         }
-        // if (nonIntersectedEle.length == 0) {
-        //   window.scrollBy({ top: 0 });
-        // }
+        if (nonIntersectedEle.length == 0) {
+          window.scrollBy({ top: 0 });
+        }
 
         setCurrElements((prev) => {
           if (goingUp) {
-            prev.splice(
-              prev.length - nonIntersectedEle.length,
-              nonIntersectedEle.length
-            );
-            window.scrollBy({
-              top: elementHeightInPixel * nonIntersectedEle.length,
-              behavior: "auto",
-            });
+            const currMovieID = prev.at(0)?.id;
 
-            for (let i = 0; i < nonIntersectedEle.length; i++) {
+            let moviesUptoAppended = nonIntersectedEle.length;
+
+            let moviesUptoAppendedIdx =
+              currMovieID - nonIntersectedEle.length - 1;
+
+            if (moviesUptoAppendedIdx < 0) {
+              moviesUptoAppended += moviesUptoAppendedIdx;
+              moviesUptoAppendedIdx = 0;
+            }
+
+            prev.splice(prev.length - moviesUptoAppended, moviesUptoAppended);
+            // window.scrollBy({
+            //   top: elementHeightInPixel * moviesUptoAppended,
+            //   behavior: "auto",
+            // });
+
+            for (let i = 0; i < moviesUptoAppended; i++) {
               skipElement.add(i);
             }
-            return [
-              ...Array.from({ length: nonIntersectedEle.length }).map(
-                () => colors[getRandomIdx()]
-              ),
-              ...prev,
-            ];
+
+            const newMovieList: Array<Movie> = [];
+
+            for (let i = currMovieID - 2; i >= moviesUptoAppendedIdx; i--) {
+              newMovieList.push(MoviesData[i]);
+            }
+            return [...newMovieList, ...prev];
           } else {
-            prev.splice(0, nonIntersectedEle.length);
-            window.scrollBy({
-              top: -(elementHeightInPixel * nonIntersectedEle.length),
-              behavior: "auto",
-            });
+            const currMovieID = prev.at(-1)?.id;
 
-            for (
-              let i = prev.length;
-              i < prev.length + nonIntersectedEle.length;
-              i++
-            ) {
+            let moviesUptoAppended = currMovieID + nonIntersectedEle.length;
+
+            let nMoviesToBeAdded = nonIntersectedEle.length;
+
+            if (currMovieID + nMoviesToBeAdded > MoviesData.length - 1) {
+              nMoviesToBeAdded = MoviesData.length - currMovieID;
+            }
+            if (moviesUptoAppended > MoviesData.length) {
+              moviesUptoAppended -= moviesUptoAppended - MoviesData.length;
+            }
+            prev.splice(0, moviesUptoAppended - currMovieID);
+            // window.scrollBy({
+            //   top: -(elementHeightInPixel * nMoviesToBeAdded),
+            //   behavior: "auto",
+            // });
+
+            for (let i = prev.length; i < prev.length + nMoviesToBeAdded; i++) {
               skipElement.add(i);
             }
-            return [
-              ...prev,
-              ...Array.from({ length: nonIntersectedEle.length }).map(
-                () => colors[getRandomIdx()]
-              ),
-            ];
+
+            const newMovies: Array<Movie> = [];
+            for (let i = currMovieID; i < moviesUptoAppended; i++) {
+              newMovies.push(MoviesData[i]);
+            }
+
+            return [...prev, ...newMovies];
           }
         });
         console.log(goingUp ? "Goin Up" : "Goind Down");
@@ -105,9 +128,9 @@ const ScrollComponent = () => {
 
   return (
     <div>
-      {currElements.map((color, i) => (
+      {currElements.map((movie, i) => (
         <ObservableElement
-          color={color}
+          movie={movie}
           key={i}
           id={`${i}`}
           intersectionObserver={intersectionObserver.current}

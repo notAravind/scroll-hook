@@ -1,26 +1,28 @@
 import { useEffect, useRef } from "react";
+import { Movie } from "./scrollOnDemand";
 
 const ObservableElement = ({
-  color,
+  movie,
   intersectionObserver,
   id,
 }: {
-  color: string;
+  movie: Movie;
   id: string;
   intersectionObserver: IntersectionObserver | undefined;
 }) => {
   const elementRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
+    const ele = elementRef.current;
     if (elementRef.current) {
       intersectionObserver.observe(elementRef.current);
     }
     return () => {
-      intersectionObserver?.unobserve(elementRef.current);
+      intersectionObserver?.unobserve(ele);
     };
   }, []);
   return (
-    <div id={id} ref={elementRef} style={{ height: "20vh", color }}>
-      Element
+    <div id={id} ref={elementRef} style={{ height: "25vh" }}>
+      {movie.movie}
     </div>
   );
 };
